@@ -1,0 +1,18 @@
+{
+  "name": "db-postgres",
+  "description": "Postgres client using Bun's native SQL bindings (no dependencies)",
+  "env": [
+    {
+      "key": "DATABASE_URL",
+      "value": "postgres://postgres:postgres@localhost:5432/app"
+    }
+  ],
+  "inserts": [
+    {
+      "file": "src/config/env.ts",
+      "anchor": "// bono:env",
+      "line": "  DATABASE_URL: z.url(),"
+    }
+  ],
+  "readme": "## Database\n\n`sql` from `src/db/client.ts` (Bun's native Postgres client, no driver dep). Tagged templates are parameterized:\n\n```ts\nconst rows = await sql`select * from todos where id = ${id}`;\n```\n\nConnection string: `DATABASE_URL` in `.env`."
+}

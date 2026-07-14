@@ -1,0 +1,17 @@
+{
+  "name": "drizzle",
+  "description": "Drizzle ORM over the Bun Postgres client, with drizzle-kit migrations",
+  "dependencies": {
+    "drizzle-orm": "^0.44.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.0",
+    "pg": "^8.16.0"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push"
+  },
+  "readme": "## Drizzle\n\n`db` from `src/db/index.ts`. Tables go in `src/db/schema/`, one file per table, exported from `schema/index.ts`.\n\n```sh\nbun run db:generate   # migration from schema changes\nbun run db:migrate    # apply\n```\n\n`pg` is dev-only for drizzle-kit; the app uses Bun's native client."
+}

@@ -1,0 +1,45 @@
+{
+  "name": "bono-cli",
+  "version": "0.1.0",
+  "description": "CLI for scaffolding Hono APIs on Bun",
+  "license": "MIT",
+  "author": "Sillyfrogster (https://github.com/Sillyfrogster)",
+  "type": "module",
+  "bin": {
+    "bono": "cli/index.ts"
+  },
+  "files": [
+    "cli",
+    "templates",
+    "!cli/**/*.test.ts",
+    "!**/node_modules",
+    "!**/bun.lock",
+    "!**/.env"
+  ],
+  "scripts": {
+    "test": "bun test cli",
+    "check": "biome check .",
+    "typecheck": "tsc --noEmit",
+    "verify": "bun scripts/verify-combos.ts",
+    "prepublishOnly": "bun test cli && bun run verify"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.11.0",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.0",
+    "@types/bun": "latest",
+    "typescript": "^5.8.0"
+  },
+  "engines": {
+    "bun": ">=1.2.0"
+  },
+  "keywords": [
+    "hono",
+    "bun",
+    "scaffold",
+    "cli",
+    "api"
+  ]
+}
