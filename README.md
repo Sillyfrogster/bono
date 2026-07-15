@@ -10,7 +10,7 @@ Scaffold a Hono API on Bun with the boring setup already done.
 bunx bono-cli new my-api
 ```
 
-Prompts for Postgres, docker-compose, and Drizzle. `--base` skips them all.
+Prompts add integrations on top of the base. `--base` skips them.
 
 ## The base
 
@@ -29,8 +29,9 @@ Prompts for Postgres, docker-compose, and Drizzle. `--base` skips them all.
 | --- | --- |
 | `--base` | Skip prompts, base only |
 | `--database <postgres\|none>` | |
-| `--docker` / `--no-docker` | docker-compose for local Postgres |
 | `--orm <drizzle\|none>` | |
+| `--cache <redis\|none>` | Redis, also backs rate limiting |
+| `--docker` / `--no-docker` | docker-compose for local services |
 | `--no-git` | Skip `git init` |
 | `--no-install` | Skip `bun install` |
 
