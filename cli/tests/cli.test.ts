@@ -2,33 +2,70 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { applyIntegration, copyBase } from "../src/apply.ts";
+import { applyIntegration, copyBase, writeCompose } from "../src/apply.ts";
 import { integrationsFor, validateAnswers } from "../src/plan.ts";
 
 describe("plan", () => {
   test("answers map to the right integrations", () => {
     expect(
-      integrationsFor({ database: "none", docker: false, orm: "none" }),
+      integrationsFor({
+        database: "none",
+        orm: "none",
+        cache: "none",
+        docker: false,
+      }),
     ).toEqual([]);
     expect(
-      integrationsFor({ database: "postgres", docker: false, orm: "none" }),
+      integrationsFor({
+        database: "postgres",
+        orm: "none",
+        cache: "none",
+        docker: false,
+      }),
     ).toEqual(["db-postgres"]);
     expect(
-      integrationsFor({ database: "postgres", docker: true, orm: "drizzle" }),
-    ).toEqual(["db-postgres", "compose-postgres", "drizzle"]);
+      integrationsFor({
+        database: "postgres",
+        orm: "drizzle",
+        cache: "redis",
+        docker: true,
+      }),
+    ).toEqual(["db-postgres", "drizzle", "redis"]);
+    expect(
+      integrationsFor({
+        database: "none",
+        orm: "none",
+        cache: "redis",
+        docker: false,
+      }),
+    ).toEqual(["redis"]);
   });
 
   test("bad flag combinations are refused, not silently mangled", () => {
     expect(
       validateAnswers({
         database: "mysql" as never,
-        docker: false,
         orm: "none",
+        cache: "none",
+        docker: false,
       }),
     ).toContain("Unknown database");
     expect(
-      validateAnswers({ database: "none", docker: false, orm: "drizzle" }),
+      validateAnswers({
+        database: "none",
+        orm: "drizzle",
+        cache: "none",
+        docker: false,
+      }),
     ).toContain("makes no sense");
+    expect(
+      validateAnswers({
+        database: "none",
+        orm: "none",
+        cache: "none",
+        docker: true,
+      }),
+    ).toContain("local service");
   });
 });
 
@@ -74,6 +111,20 @@ describe("apply", () => {
     expect(envTs).toContain("DATABASE_URL: z.url(),");
     expect(env).toContain("DATABASE_URL=");
     expect(readme).toContain("## Database");
+  });
+
+  test("docker-compose assembles the selected services", async () => {
+    const manifests = [
+      await applyIntegration(templatesDir, dest, "db-postgres"),
+      await applyIntegration(templatesDir, dest, "redis"),
+    ];
+    await writeCompose(dest, manifests);
+    const compose = await Bun.file(join(dest, "docker-compose.yml")).text();
+
+    expect(compose).toContain("postgres:");
+    expect(compose).toContain("redis:");
+    expect(compose).toContain("volumes:");
+    expect(compose).toContain("postgres-data:");
   });
 
   test("applying the same integration twice changes nothing", async () => {

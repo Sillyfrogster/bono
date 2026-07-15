@@ -14,5 +14,9 @@
       "line": "  DATABASE_URL: z.url(),"
     }
   ],
+  "compose": {
+    "service": "  postgres:\n    image: postgres:17-alpine\n    restart: unless-stopped\n    environment:\n      POSTGRES_USER: postgres\n      POSTGRES_PASSWORD: postgres\n      POSTGRES_DB: app\n    ports:\n      - \"5432:5432\"\n    volumes:\n      - postgres-data:/var/lib/postgresql/data",
+    "volume": "  postgres-data:"
+  },
   "readme": "## Database\n\n`sql` from `src/db/client.ts` (Bun's native Postgres client, no driver dep). Tagged templates are parameterized:\n\n```ts\nconst rows = await sql`select * from todos where id = ${id}`;\n```\n\nConnection string: `DATABASE_URL` in `.env`."
 }

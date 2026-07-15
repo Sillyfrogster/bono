@@ -2,9 +2,11 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import * as p from "@clack/prompts";
 import pc from "picocolors";
-import { applyIntegration, copyBase } from "./apply.ts";
+import { applyIntegration, copyBase, writeCompose } from "./apply.ts";
+import type { IntegrationManifest } from "./manifest.ts";
 import {
   type Answers,
+  type Cache,
   type Database,
   integrationsFor,
   type Orm,
@@ -16,6 +18,7 @@ export interface NewOptions {
   base: boolean;
   database?: string;
   orm?: string;
+  cache?: string;
   docker?: boolean;
   git: boolean;
   install: boolean;
@@ -45,9 +48,13 @@ export async function runNew(options: NewOptions): Promise<void> {
   const spinner = p.spinner();
   spinner.start("Copying base");
   await copyBase(templatesDir, dest, options.projectName);
+  const applied: IntegrationManifest[] = [];
   for (const name of integrationsFor(answers)) {
     spinner.message(`Adding ${name}`);
-    await applyIntegration(templatesDir, dest, name);
+    applied.push(await applyIntegration(templatesDir, dest, name));
+  }
+  if (answers.docker) {
+    await writeCompose(dest, applied);
   }
   spinner.stop("Project files written");
 
@@ -81,16 +88,22 @@ async function collectAnswers(options: NewOptions): Promise<Answers> {
     (options.database as Database | undefined) ??
     (skipPrompts ? "none" : await askDatabase());
 
-  if (database === "none") {
-    return { database, docker: false, orm: "none" };
-  }
-
-  const docker = options.docker ?? (skipPrompts ? false : await askDocker());
-
   const orm =
-    (options.orm as Orm | undefined) ?? (skipPrompts ? "none" : await askOrm());
+    database === "none"
+      ? "none"
+      : ((options.orm as Orm | undefined) ??
+        (skipPrompts ? "none" : await askOrm()));
 
-  return { database, docker, orm };
+  const cache =
+    (options.cache as Cache | undefined) ??
+    (skipPrompts ? "none" : await askCache());
+
+  const hasLocalService = database === "postgres" || cache === "redis";
+  const docker = hasLocalService
+    ? (options.docker ?? (skipPrompts ? false : await askDocker()))
+    : false;
+
+  return { database, orm, cache, docker };
 }
 
 async function askDatabase(): Promise<Database> {
@@ -112,9 +125,28 @@ async function askDatabase(): Promise<Database> {
   return cancelled(choice);
 }
 
+async function askCache(): Promise<Cache> {
+  const choice = await p.select({
+    message: "Cache?",
+    options: [
+      {
+        value: "redis" as const,
+        label: "Redis",
+        hint: "Bun-native client, also backs rate limiting",
+      },
+      {
+        value: "none" as const,
+        label: "None",
+        hint: "in-memory rate limiting",
+      },
+    ],
+  });
+  return cancelled(choice);
+}
+
 async function askDocker(): Promise<boolean> {
   const choice = await p.confirm({
-    message: "docker-compose for local Postgres?",
+    message: "docker-compose for local services?",
   });
   return cancelled(choice);
 }

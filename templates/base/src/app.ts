@@ -6,6 +6,7 @@ import type { AppEnv } from "./lib/app-env.ts";
 import { AppError, type ErrorBody } from "./lib/errors.ts";
 import { logger } from "./lib/logger.ts";
 import { rateLimit } from "./middleware/rate-limit.ts";
+import { createRateLimitStore } from "./middleware/rate-limit-store.ts";
 import { requestLogger } from "./middleware/request-logger.ts";
 
 export const app = new Hono<AppEnv>();
@@ -13,7 +14,7 @@ export const app = new Hono<AppEnv>();
 app.use(requestId());
 app.use(requestLogger());
 app.use(cors());
-app.use(rateLimit());
+app.use(rateLimit({ store: createRateLimitStore() }));
 // bono:middleware
 
 app.get("/health", (c) => c.json({ status: "ok" }));

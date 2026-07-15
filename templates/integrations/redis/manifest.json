@@ -1,0 +1,21 @@
+{
+  "name": "redis",
+  "description": "Redis using Bun's native client, backs caching and rate limiting",
+  "env": [
+    {
+      "key": "REDIS_URL",
+      "value": "redis://localhost:6379"
+    }
+  ],
+  "inserts": [
+    {
+      "file": "src/config/env.ts",
+      "anchor": "// bono:env",
+      "line": "  REDIS_URL: z.url(),"
+    }
+  ],
+  "compose": {
+    "service": "  redis:\n    image: redis:7-alpine\n    restart: unless-stopped\n    ports:\n      - \"6379:6379\""
+  },
+  "readme": "## Redis\n\n`redis` from `src/lib/redis.ts` (Bun's native client, no driver dep). Cache helpers `cacheGet`, `cacheSet`, `cacheDelete` in `src/lib/cache.ts`. Rate limiting uses Redis while this is installed.\n\nConnection string: `REDIS_URL` in `.env`."
+}

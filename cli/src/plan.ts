@@ -1,14 +1,17 @@
 export const DATABASES = ["postgres", "none"] as const;
 export const ORMS = ["drizzle", "none"] as const;
+export const CACHES = ["redis", "none"] as const;
 
 export type Database = (typeof DATABASES)[number];
 export type Orm = (typeof ORMS)[number];
+export type Cache = (typeof CACHES)[number];
 
 export interface Answers {
   database: Database;
-  /** docker-compose for local Postgres; only meaningful with database=postgres. */
-  docker: boolean;
   orm: Orm;
+  cache: Cache;
+  /** docker-compose for the selected local services. */
+  docker: boolean;
 }
 
 /**
@@ -16,15 +19,15 @@ export interface Answers {
  * The whole CLI's decision logic lives here so it can be tested as data.
  */
 export function integrationsFor(answers: Answers): string[] {
-  if (answers.database === "none") {
-    return [];
+  const integrations: string[] = [];
+  if (answers.database === "postgres") {
+    integrations.push("db-postgres");
+    if (answers.orm === "drizzle") {
+      integrations.push("drizzle");
+    }
   }
-  const integrations = ["db-postgres"];
-  if (answers.docker) {
-    integrations.push("compose-postgres");
-  }
-  if (answers.orm === "drizzle") {
-    integrations.push("drizzle");
+  if (answers.cache === "redis") {
+    integrations.push("redis");
   }
   return integrations;
 }
@@ -37,11 +40,18 @@ export function validateAnswers(answers: Answers): string | null {
   if (!ORMS.includes(answers.orm)) {
     return `Unknown ORM "${answers.orm}". Expected: ${ORMS.join(", ")}`;
   }
+  if (!CACHES.includes(answers.cache)) {
+    return `Unknown cache "${answers.cache}". Expected: ${CACHES.join(", ")}`;
+  }
   if (answers.database === "none" && answers.orm !== "none") {
     return "An ORM without a database makes no sense. Pick a database or drop the ORM.";
   }
-  if (answers.database === "none" && answers.docker) {
-    return "docker-compose is only for the Postgres option.";
+  if (
+    answers.docker &&
+    answers.database === "none" &&
+    answers.cache === "none"
+  ) {
+    return "docker-compose needs a local service. Pick Postgres or Redis.";
   }
   return null;
 }

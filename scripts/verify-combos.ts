@@ -13,30 +13,81 @@ const cli = resolve(import.meta.dir, "../cli/index.ts");
 interface Combo {
   label: string;
   args: string[];
-  hasDrizzle: boolean;
+  hasDrizzle?: boolean;
+  needsService?: boolean;
 }
 
 const combos: Combo[] = [
-  { label: "base", args: ["--base"], hasDrizzle: false },
+  { label: "base", args: ["--base"] },
   {
     label: "postgres",
-    args: ["--database", "postgres", "--no-docker", "--orm", "none"],
-    hasDrizzle: false,
+    args: [
+      "--database",
+      "postgres",
+      "--orm",
+      "none",
+      "--cache",
+      "none",
+      "--no-docker",
+    ],
   },
   {
     label: "postgres-docker",
-    args: ["--database", "postgres", "--docker", "--orm", "none"],
-    hasDrizzle: false,
+    args: [
+      "--database",
+      "postgres",
+      "--orm",
+      "none",
+      "--cache",
+      "none",
+      "--docker",
+    ],
   },
   {
     label: "postgres-drizzle",
-    args: ["--database", "postgres", "--docker", "--orm", "drizzle"],
+    args: [
+      "--database",
+      "postgres",
+      "--orm",
+      "drizzle",
+      "--cache",
+      "none",
+      "--docker",
+    ],
     hasDrizzle: true,
+    needsService: true,
   },
   {
     label: "postgres-drizzle-no-docker",
-    args: ["--database", "postgres", "--no-docker", "--orm", "drizzle"],
+    args: [
+      "--database",
+      "postgres",
+      "--orm",
+      "drizzle",
+      "--cache",
+      "none",
+      "--no-docker",
+    ],
     hasDrizzle: true,
+  },
+  {
+    label: "redis-docker",
+    args: ["--database", "none", "--cache", "redis", "--docker"],
+    needsService: true,
+  },
+  {
+    label: "postgres-redis-docker",
+    args: [
+      "--database",
+      "postgres",
+      "--orm",
+      "drizzle",
+      "--cache",
+      "redis",
+      "--docker",
+    ],
+    hasDrizzle: true,
+    needsService: true,
   },
 ];
 
@@ -54,10 +105,11 @@ for (const combo of combos) {
     }
     // The documented first step in every generated README.
     run(["cp", ".env.example", ".env"], projectDir);
-    if (combo.label === "postgres-drizzle") {
-      await migrateCheck(projectDir);
+    if (combo.needsService) {
+      await liveCheck(projectDir, combo.hasDrizzle ?? false);
+    } else {
+      await bootCheck(projectDir);
     }
-    await bootCheck(projectDir);
     console.log(`ok: ${combo.label}`);
   } catch (error) {
     failures += 1;
@@ -93,18 +145,23 @@ function run(
 }
 
 /**
- * Real migration against a live Postgres, gated on Docker being available.
- * Skipped (with a note) when it is not; nothing here is required of users.
+ * Boots the project against live services from its compose file, gated on
+ * Docker being available. Skipped with a note when it is not.
  */
-async function migrateCheck(projectDir: string): Promise<void> {
+async function liveCheck(
+  projectDir: string,
+  hasDrizzle: boolean,
+): Promise<void> {
   if (!dockerAvailable()) {
-    console.log("skipped db:migrate check (docker not available)");
+    console.log("skipped live check (docker not available)");
     return;
   }
   try {
     run(["docker", "compose", "up", "-d", "--wait"], projectDir);
-    run(["bun", "run", "db:migrate"], projectDir);
-    console.log("db:migrate ran against live Postgres");
+    if (hasDrizzle) {
+      run(["bun", "run", "db:migrate"], projectDir);
+    }
+    await bootCheck(projectDir);
   } finally {
     Bun.spawnSync(["docker", "compose", "down", "-v"], {
       cwd: projectDir,

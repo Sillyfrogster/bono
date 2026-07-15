@@ -56,6 +56,31 @@ export async function applyIntegration(
   return manifest;
 }
 
+/** Writes docker-compose.yml from the services of the applied integrations. */
+export async function writeCompose(
+  dest: string,
+  manifests: IntegrationManifest[],
+): Promise<void> {
+  const fragments = manifests
+    .map((manifest) => manifest.compose)
+    .filter((compose) => compose !== undefined);
+  if (fragments.length === 0) {
+    return;
+  }
+
+  const services = fragments.map((fragment) => fragment.service).join("\n");
+  const volumes = fragments
+    .map((fragment) => fragment.volume)
+    .filter((volume) => volume !== undefined);
+
+  let content = `services:\n${services}\n`;
+  if (volumes.length > 0) {
+    content += `\nvolumes:\n${volumes.join("\n")}\n`;
+  }
+  await Bun.write(join(dest, "docker-compose.yml"), content);
+  await appendReadme(dest, "## Docker\n\n```sh\ndocker compose up -d\n```");
+}
+
 /** Appends an integration's docs to the generated README, once. */
 async function appendReadme(dest: string, section: string): Promise<void> {
   const path = join(dest, "README.md");

@@ -1,5 +1,0 @@
-{
-  "name": "compose-postgres",
-  "description": "docker-compose service for local Postgres",
-  "readme": "## Local Postgres\n\n```sh\ndocker compose up -d\n```\n\nCredentials match the default `DATABASE_URL`."
-}

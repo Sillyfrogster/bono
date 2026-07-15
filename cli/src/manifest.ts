@@ -12,6 +12,11 @@ export interface Insert {
   line: string;
 }
 
+export interface ComposeFragment {
+  service: string;
+  volume?: string;
+}
+
 export interface IntegrationManifest {
   name: string;
   description: string;
@@ -20,6 +25,7 @@ export interface IntegrationManifest {
   scripts?: Record<string, string>;
   env?: EnvEntry[];
   inserts?: Insert[];
+  compose?: ComposeFragment;
   /** Markdown appended to the generated project's README. */
   readme?: string;
 }

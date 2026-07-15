@@ -11,6 +11,7 @@ Options:
   --base                       Skip all prompts, generate the base
   --database <postgres|none>   Answer the database prompt
   --orm <drizzle|none>         Answer the ORM prompt
+  --cache <redis|none>         Answer the cache prompt
   --docker / --no-docker       Answer the docker-compose prompt
   --no-git                     Skip git init
   --no-install                 Skip bun install
@@ -24,6 +25,7 @@ const { values, positionals } = parseArgs({
     base: { type: "boolean", default: false },
     database: { type: "string" },
     orm: { type: "string" },
+    cache: { type: "string" },
     docker: { type: "boolean", default: false },
     "no-docker": { type: "boolean", default: false },
     "no-git": { type: "boolean", default: false },
@@ -54,6 +56,7 @@ await runNew({
   base: values.base,
   database: values.database,
   orm: values.orm,
+  cache: values.cache,
   docker: values.docker ? true : values["no-docker"] ? false : undefined,
   git: !values["no-git"],
   install: !values["no-install"],
