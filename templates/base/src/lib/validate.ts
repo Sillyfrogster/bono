@@ -9,7 +9,10 @@ import type { ErrorBody } from "./errors.ts";
  *
  *   app.post("/", validate("json", createTodoSchema), handler)
  */
-export function validate<Schema extends ZodType, Target extends keyof ValidationTargets>(target: Target, schema: Schema) {
+export function validate<
+  Schema extends ZodType,
+  Target extends keyof ValidationTargets,
+>(target: Target, schema: Schema) {
   return zValidator(target, schema, (result, c) => {
     if (!result.success) {
       const body: ErrorBody = {

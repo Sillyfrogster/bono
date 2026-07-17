@@ -1,95 +1,20 @@
 #!/usr/bin/env bun
-/**
- * Generates every valid answer combination with the real CLI, then proves
- * each project installs, typechecks, passes its tests, and serves /health.
- * Run before publishing: bun run verify
- */
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { CACHES, DATABASES, ORMS } from "../cli/src/plan.ts";
 
 const cli = resolve(import.meta.dir, "../cli/index.ts");
 
 interface Combo {
   label: string;
   args: string[];
-  hasDrizzle?: boolean;
-  needsService?: boolean;
+  docker: boolean;
+  hasDrizzle: boolean;
+  hasRedis: boolean;
 }
 
-const combos: Combo[] = [
-  { label: "base", args: ["--base"] },
-  {
-    label: "postgres",
-    args: [
-      "--database",
-      "postgres",
-      "--orm",
-      "none",
-      "--cache",
-      "none",
-      "--no-docker",
-    ],
-  },
-  {
-    label: "postgres-docker",
-    args: [
-      "--database",
-      "postgres",
-      "--orm",
-      "none",
-      "--cache",
-      "none",
-      "--docker",
-    ],
-  },
-  {
-    label: "postgres-drizzle",
-    args: [
-      "--database",
-      "postgres",
-      "--orm",
-      "drizzle",
-      "--cache",
-      "none",
-      "--docker",
-    ],
-    hasDrizzle: true,
-    needsService: true,
-  },
-  {
-    label: "postgres-drizzle-no-docker",
-    args: [
-      "--database",
-      "postgres",
-      "--orm",
-      "drizzle",
-      "--cache",
-      "none",
-      "--no-docker",
-    ],
-    hasDrizzle: true,
-  },
-  {
-    label: "redis-docker",
-    args: ["--database", "none", "--cache", "redis", "--docker"],
-    needsService: true,
-  },
-  {
-    label: "postgres-redis-docker",
-    args: [
-      "--database",
-      "postgres",
-      "--orm",
-      "drizzle",
-      "--cache",
-      "redis",
-      "--docker",
-    ],
-    hasDrizzle: true,
-    needsService: true,
-  },
-];
+const combos = buildCombos();
 
 const workDir = mkdtempSync(join(tmpdir(), "bono-verify-"));
 let failures = 0;
@@ -99,14 +24,17 @@ for (const combo of combos) {
   const projectDir = join(workDir, combo.label);
   try {
     run(["bun", cli, "new", combo.label, "--no-git", ...combo.args], workDir);
-    run(["bunx", "tsc", "--noEmit"], projectDir);
+    run(["cp", ".env.example", ".env"], projectDir);
+    run(["bun", "run", "check"], projectDir);
+    run(["bun", "run", "typecheck"], projectDir);
+    run(["bun", "test"], projectDir);
     if (combo.hasDrizzle) {
       run(["bun", "run", "db:generate"], projectDir);
     }
-    // The documented first step in every generated README.
-    run(["cp", ".env.example", ".env"], projectDir);
-    if (combo.needsService) {
-      await liveCheck(projectDir, combo.hasDrizzle ?? false);
+    if (combo.docker) {
+      await liveCheck(projectDir, combo.hasDrizzle);
+    } else if (combo.hasRedis) {
+      console.log("skipped boot check (external Redis required)");
     } else {
       await bootCheck(projectDir);
     }
@@ -115,6 +43,8 @@ for (const combo of combos) {
     failures += 1;
     console.error(`FAILED: ${combo.label}`);
     console.error(error instanceof Error ? error.message : error);
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
   }
 }
 
@@ -125,6 +55,63 @@ if (failures > 0) {
   process.exit(1);
 }
 console.log(`\nAll ${combos.length} combos verified.`);
+
+function buildCombos(): Combo[] {
+  const combos: Combo[] = [];
+
+  for (const database of DATABASES) {
+    for (const orm of ORMS) {
+      if (database === "none" && orm !== "none") {
+        continue;
+      }
+      for (const cache of CACHES) {
+        const hasLocalService = database === "postgres" || cache === "redis";
+        const dockerOptions = hasLocalService ? [false, true] : [false];
+
+        for (const docker of dockerOptions) {
+          const label = comboLabel(database, orm, cache, docker);
+          const args =
+            label === "base"
+              ? ["--base"]
+              : [
+                  "--database",
+                  database,
+                  "--orm",
+                  orm,
+                  "--cache",
+                  cache,
+                  docker ? "--docker" : "--no-docker",
+                ];
+
+          combos.push({
+            label,
+            args,
+            docker,
+            hasDrizzle: orm === "drizzle",
+            hasRedis: cache === "redis",
+          });
+        }
+      }
+    }
+  }
+
+  return combos;
+}
+
+function comboLabel(
+  database: (typeof DATABASES)[number],
+  orm: (typeof ORMS)[number],
+  cache: (typeof CACHES)[number],
+  docker: boolean,
+): string {
+  const parts = [
+    ...(database === "postgres" ? ["postgres"] : []),
+    ...(orm === "drizzle" ? ["drizzle"] : []),
+    ...(cache === "redis" ? ["redis"] : []),
+    ...(docker ? ["docker"] : []),
+  ];
+  return parts.join("-") || "base";
+}
 
 function run(
   command: string[],
@@ -144,10 +131,6 @@ function run(
   }
 }
 
-/**
- * Boots the project against live services from its compose file, gated on
- * Docker being available. Skipped with a note when it is not.
- */
 async function liveCheck(
   projectDir: string,
   hasDrizzle: boolean,
@@ -171,7 +154,6 @@ async function liveCheck(
   }
 }
 
-// Missing binary throws; installed-but-stopped daemon returns nonzero.
 function dockerAvailable(): boolean {
   try {
     const probe = Bun.spawnSync(["docker", "info"], {
@@ -194,13 +176,11 @@ async function bootCheck(projectDir: string): Promise<void> {
   });
   try {
     for (let attempt = 0; attempt < 40; attempt++) {
-      try {
-        const res = await fetch(`http://localhost:${port}/health`);
-        if (res.status === 200) {
-          return;
-        }
-      } catch {
-        // Server not up yet; retry.
+      const response = await fetch(`http://localhost:${port}/health`).catch(
+        () => null,
+      );
+      if (response?.status === 200) {
+        return;
       }
       await Bun.sleep(100);
     }

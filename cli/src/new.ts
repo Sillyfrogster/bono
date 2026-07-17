@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import * as p from "@clack/prompts";
 import pc from "picocolors";
@@ -47,24 +47,43 @@ export async function runNew(options: NewOptions): Promise<void> {
 
   const spinner = p.spinner();
   spinner.start("Copying base");
-  await copyBase(templatesDir, dest, options.projectName);
   const applied: IntegrationManifest[] = [];
-  for (const name of integrationsFor(answers)) {
-    spinner.message(`Adding ${name}`);
-    applied.push(await applyIntegration(templatesDir, dest, name));
+  try {
+    await copyBase(templatesDir, dest, options.projectName);
+    for (const name of integrationsFor(answers)) {
+      spinner.message(`Adding ${name}`);
+      applied.push(await applyIntegration(templatesDir, dest, name));
+    }
+    if (answers.docker) {
+      await writeCompose(dest, applied);
+    }
+    spinner.stop("Project files written");
+  } catch (error) {
+    spinner.stop("Project creation failed");
+    rmSync(dest, { recursive: true, force: true });
+    p.log.error(
+      error instanceof Error ? error.message : "Could not create project.",
+    );
+    process.exit(1);
   }
-  if (answers.docker) {
-    await writeCompose(dest, applied);
-  }
-  spinner.stop("Project files written");
 
   if (options.git) {
-    run(["git", "init", "-b", "main"], dest, "git init failed");
+    const result = run(["git", "init", "-b", "main"], dest);
+    if (!result.ok) {
+      p.log.error(`git init failed:\n${result.output}`);
+      process.exit(1);
+    }
   }
   if (options.install) {
     const installSpinner = p.spinner();
     installSpinner.start("Installing dependencies");
-    run(["bun", "install"], dest, "bun install failed");
+    const result = run(["bun", "install"], dest);
+    if (!result.ok) {
+      installSpinner.stop("Installation failed");
+      p.log.error(`bun install failed:\n${result.output}`);
+      p.note(`cd ${options.projectName}\nbun install`, "Try again");
+      process.exit(1);
+    }
     installSpinner.stop("Dependencies installed");
   }
 
@@ -89,19 +108,17 @@ async function collectAnswers(options: NewOptions): Promise<Answers> {
     (skipPrompts ? "none" : await askDatabase());
 
   const orm =
-    database === "none"
-      ? "none"
-      : ((options.orm as Orm | undefined) ??
-        (skipPrompts ? "none" : await askOrm()));
+    (options.orm as Orm | undefined) ??
+    (database === "none" || skipPrompts ? "none" : await askOrm());
 
   const cache =
     (options.cache as Cache | undefined) ??
     (skipPrompts ? "none" : await askCache());
 
   const hasLocalService = database === "postgres" || cache === "redis";
-  const docker = hasLocalService
-    ? (options.docker ?? (skipPrompts ? false : await askDocker()))
-    : false;
+  const docker =
+    options.docker ??
+    (hasLocalService && !skipPrompts ? await askDocker() : false);
 
   return { database, orm, cache, docker };
 }
@@ -178,16 +195,22 @@ function cancelled<T>(value: T | symbol): T {
   return value;
 }
 
-function run(command: string[], cwd: string, errorMessage: string): void {
+function run(
+  command: string[],
+  cwd: string,
+): { ok: true } | { ok: false; output: string } {
   const result = Bun.spawnSync(command, {
     cwd,
     stdout: "pipe",
     stderr: "pipe",
   });
-  if (result.exitCode !== 0) {
-    p.log.error(`${errorMessage}:\n${result.stderr.toString()}`);
-    process.exit(1);
+  if (result.exitCode === 0) {
+    return { ok: true };
   }
+  return {
+    ok: false,
+    output: result.stderr.toString() || result.stdout.toString(),
+  };
 }
 
 // Input mistakes are not failures; keep them calm, not red.

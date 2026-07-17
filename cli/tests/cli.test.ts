@@ -5,6 +5,95 @@ import { join, resolve } from "node:path";
 import { applyIntegration, copyBase, writeCompose } from "../src/apply.ts";
 import { integrationsFor, validateAnswers } from "../src/plan.ts";
 
+const cli = resolve(import.meta.dir, "../index.ts");
+
+describe("cli", () => {
+  let workDir: string;
+
+  beforeEach(() => {
+    workDir = mkdtempSync(join(tmpdir(), "bono-cli-test-"));
+  });
+
+  afterEach(() => {
+    rmSync(workDir, { recursive: true, force: true });
+  });
+
+  test("rejects conflicting options before writing files", () => {
+    const cases = [
+      {
+        name: "orm-without-db",
+        args: ["--database", "none", "--orm", "drizzle"],
+        message: "An ORM without a database makes no sense",
+      },
+      {
+        name: "docker-without-service",
+        args: ["--database", "none", "--cache", "none", "--docker"],
+        message: "docker-compose needs a local service",
+      },
+      {
+        name: "both-docker-options",
+        args: ["--database", "postgres", "--docker", "--no-docker"],
+        message: "Choose either --docker or --no-docker",
+      },
+      {
+        name: "base-with-database",
+        args: ["--base", "--database", "postgres"],
+        message: "--base cannot be combined with integration flags",
+      },
+    ];
+
+    for (const testCase of cases) {
+      const result = runCli([
+        "new",
+        testCase.name,
+        ...testCase.args,
+        "--no-git",
+        "--no-install",
+      ]);
+
+      expect(result.exitCode).toBe(1);
+      expect(`${result.stdout}${result.stderr}`).toContain(testCase.message);
+      expect(existsSync(join(workDir, testCase.name))).toBe(false);
+    }
+  });
+
+  test("rejects extra arguments", () => {
+    const result = runCli([
+      "new",
+      "app",
+      "extra",
+      "--base",
+      "--no-git",
+      "--no-install",
+    ]);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('Unexpected argument "extra".');
+    expect(existsSync(join(workDir, "app"))).toBe(false);
+  });
+
+  test("rejects unknown options without a stack trace", () => {
+    const result = runCli(["new", "app", "--unknown"]);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("Unknown option '--unknown'");
+    expect(result.stderr).not.toContain("at parseArgs");
+  });
+
+  function runCli(args: string[]) {
+    const result = Bun.spawnSync(["bun", cli, ...args], {
+      cwd: workDir,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    return {
+      exitCode: result.exitCode,
+      stdout: result.stdout.toString(),
+      stderr: result.stderr.toString(),
+    };
+  }
+});
+
 describe("plan", () => {
   test("answers map to the right integrations", () => {
     expect(

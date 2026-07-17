@@ -27,7 +27,7 @@
     "check": "biome check .",
     "typecheck": "tsc --noEmit",
     "verify": "bun scripts/verify-combos.ts",
-    "prepublishOnly": "bun test cli && bun run verify"
+    "prepublishOnly": "bun run check && bun run typecheck && bun run test && bun run verify"
   },
   "dependencies": {
     "@clack/prompts": "^0.11.0",

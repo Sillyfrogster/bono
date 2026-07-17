@@ -31,6 +31,11 @@ src/
 
 `features/todos` is the example. Copy the pattern, then delete it.
 
+## Tests
+
+`src/app.test.ts` checks health, errors, validation, todos, and rate limiting.
+It calls the app directly, so no server is needed.
+
 ## Errors
 
 Everything error-shaped comes back as:
