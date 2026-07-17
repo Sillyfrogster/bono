@@ -1,6 +1,6 @@
 {
   "name": "bono-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "CLI for scaffolding Hono APIs on Bun",
   "license": "MIT",
   "author": "Sillyfrogster (https://github.com/Sillyfrogster)",
