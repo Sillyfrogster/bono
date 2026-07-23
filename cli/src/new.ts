@@ -134,6 +134,11 @@ async function askDatabase(): Promise<Database> {
         hint: "Bun-native client, zero dependencies",
       },
       {
+        value: "sqlite" as const,
+        label: "SQLite",
+        hint: "Bun-native, a local file, zero dependencies",
+      },
+      {
         value: "none" as const,
         label: "None",
         hint: "set one up yourself later",

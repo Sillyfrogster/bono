@@ -122,6 +122,14 @@ describe("plan", () => {
     ).toEqual(["db-postgres", "drizzle-postgres", "redis"]);
     expect(
       integrationsFor({
+        database: "sqlite",
+        orm: "drizzle",
+        cache: "none",
+        docker: false,
+      }),
+    ).toEqual(["db-sqlite", "drizzle-sqlite"]);
+    expect(
+      integrationsFor({
         database: "none",
         orm: "none",
         cache: "redis",
@@ -214,6 +222,16 @@ describe("apply", () => {
     expect(compose).toContain("redis:");
     expect(compose).toContain("volumes:");
     expect(compose).toContain("postgres-data:");
+  });
+
+  test("gitignore patterns are appended, once", async () => {
+    await applyIntegration(templatesDir, dest, "db-sqlite");
+    const gitignore = await Bun.file(join(dest, ".gitignore")).text();
+    expect(gitignore).toContain("*.db");
+
+    await applyIntegration(templatesDir, dest, "db-sqlite");
+
+    expect(await Bun.file(join(dest, ".gitignore")).text()).toBe(gitignore);
   });
 
   test("applying the same integration twice changes nothing", async () => {

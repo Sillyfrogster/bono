@@ -1,0 +1,19 @@
+{
+  "name": "db-sqlite",
+  "description": "SQLite using Bun's native bun:sqlite (no dependencies)",
+  "env": [
+    {
+      "key": "DATABASE_URL",
+      "value": "./app.db"
+    }
+  ],
+  "inserts": [
+    {
+      "file": "src/config/env.ts",
+      "anchor": "// bono:env",
+      "line": "  DATABASE_URL: z.string().min(1),"
+    }
+  ],
+  "gitignore": ["*.db", "*.db-*"],
+  "readme": "## Database\n\n`sqlite` from `src/db/client.ts` (Bun's native SQLite, no driver dep). Query with prepared statements:\n\n```ts\nconst rows = sqlite.query(\"select * from todos where id = $id\").all({ $id: id });\n```\n\nDatabase file: `DATABASE_URL` in `.env`."
+}

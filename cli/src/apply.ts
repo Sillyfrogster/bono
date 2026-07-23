@@ -47,6 +47,7 @@ export async function applyIntegration(
 
   await mergePackageJson(dest, manifest);
   await appendEnv(dest, manifest.env ?? []);
+  await appendGitignore(dest, manifest.gitignore ?? []);
   for (const insert of manifest.inserts ?? []) {
     await applyInsert(dest, insert.file, insert.anchor, insert.line);
   }
@@ -135,6 +136,29 @@ async function appendEnv(
     .join("\n");
   const separator = current.endsWith("\n") ? "" : "\n";
   await Bun.write(path, `${current}${separator}${lines}\n`);
+}
+
+async function appendGitignore(
+  dest: string,
+  patterns: string[],
+): Promise<void> {
+  if (patterns.length === 0) {
+    return;
+  }
+  const path = join(dest, ".gitignore");
+  const current = await Bun.file(path).text();
+  const existing = new Set(
+    current
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean),
+  );
+  const missing = patterns.filter((pattern) => !existing.has(pattern));
+  if (missing.length === 0) {
+    return;
+  }
+  const separator = current.endsWith("\n") ? "" : "\n";
+  await Bun.write(path, `${current}${separator}${missing.join("\n")}\n`);
 }
 
 /**

@@ -26,6 +26,7 @@ export interface IntegrationManifest {
   env?: EnvEntry[];
   inserts?: Insert[];
   compose?: ComposeFragment;
+  gitignore?: string[];
   /** Markdown appended to the generated project's README. */
   readme?: string;
 }

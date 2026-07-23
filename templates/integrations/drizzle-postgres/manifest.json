@@ -1,5 +1,5 @@
 {
-  "name": "drizzle",
+  "name": "drizzle-postgres",
   "description": "Drizzle ORM over the Bun Postgres client, with drizzle-kit migrations",
   "dependencies": {
     "drizzle-orm": "^0.44.0"
