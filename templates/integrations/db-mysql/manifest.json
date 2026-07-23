@@ -1,0 +1,22 @@
+{
+  "name": "db-mysql",
+  "description": "MySQL using Bun's native SQL bindings (no dependencies)",
+  "env": [
+    {
+      "key": "DATABASE_URL",
+      "value": "mysql://root:mysql@localhost:3306/app"
+    }
+  ],
+  "inserts": [
+    {
+      "file": "src/config/env.ts",
+      "anchor": "// bono:env",
+      "line": "  DATABASE_URL: z.url(),"
+    }
+  ],
+  "compose": {
+    "service": "  mysql:\n    image: mysql:8\n    restart: unless-stopped\n    environment:\n      MYSQL_ROOT_PASSWORD: mysql\n      MYSQL_DATABASE: app\n    ports:\n      - \"3306:3306\"\n    volumes:\n      - mysql-data:/var/lib/mysql",
+    "volume": "  mysql-data:"
+  },
+  "readme": "## Database\n\n`sql` from `src/db/client.ts` (Bun's native MySQL client, no driver dep). Tagged templates are parameterized:\n\n```ts\nconst rows = await sql`select * from todos where id = ${id}`;\n```\n\nConnection string: `DATABASE_URL` in `.env`."
+}

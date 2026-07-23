@@ -130,6 +130,14 @@ describe("plan", () => {
     ).toEqual(["db-sqlite", "drizzle-sqlite"]);
     expect(
       integrationsFor({
+        database: "mysql",
+        orm: "drizzle",
+        cache: "none",
+        docker: false,
+      }),
+    ).toEqual(["db-mysql", "drizzle-mysql"]);
+    expect(
+      integrationsFor({
         database: "none",
         orm: "none",
         cache: "redis",
@@ -141,7 +149,7 @@ describe("plan", () => {
   test("bad flag combinations are refused, not silently mangled", () => {
     expect(
       validateAnswers({
-        database: "mysql" as never,
+        database: "mongo" as never,
         orm: "none",
         cache: "none",
         docker: false,

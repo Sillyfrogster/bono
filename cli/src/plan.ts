@@ -1,4 +1,4 @@
-export const DATABASES = ["postgres", "sqlite", "none"] as const;
+export const DATABASES = ["postgres", "sqlite", "mysql", "none"] as const;
 export const ORMS = ["drizzle", "none"] as const;
 export const CACHES = ["redis", "none"] as const;
 

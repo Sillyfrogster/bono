@@ -139,6 +139,11 @@ async function askDatabase(): Promise<Database> {
         hint: "Bun-native, a local file, zero dependencies",
       },
       {
+        value: "mysql" as const,
+        label: "MySQL",
+        hint: "Bun-native client, zero dependencies",
+      },
+      {
         value: "none" as const,
         label: "None",
         hint: "set one up yourself later",
