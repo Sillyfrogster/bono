@@ -119,7 +119,7 @@ describe("plan", () => {
         cache: "redis",
         docker: true,
       }),
-    ).toEqual(["db-postgres", "drizzle", "redis"]);
+    ).toEqual(["db-postgres", "drizzle-postgres", "redis"]);
     expect(
       integrationsFor({
         database: "none",
@@ -186,7 +186,7 @@ describe("apply", () => {
 
   test("an integration lands completely: files, deps, env, insert, readme", async () => {
     await applyIntegration(templatesDir, dest, "db-postgres");
-    await applyIntegration(templatesDir, dest, "drizzle");
+    await applyIntegration(templatesDir, dest, "drizzle-postgres");
 
     const packageJson = await Bun.file(join(dest, "package.json")).json();
     const envTs = await Bun.file(join(dest, "src/config/env.ts")).text();

@@ -6,6 +6,8 @@ export type Database = (typeof DATABASES)[number];
 export type Orm = (typeof ORMS)[number];
 export type Cache = (typeof CACHES)[number];
 
+const DOCKER_SERVICE_DATABASES = new Set<string>(["postgres", "mysql"]);
+
 export interface Answers {
   database: Database;
   orm: Orm;
@@ -14,16 +16,22 @@ export interface Answers {
   docker: boolean;
 }
 
-/**
- * Maps prompt answers to the integration folders to apply, in order.
- * The whole CLI's decision logic lives here so it can be tested as data.
- */
+export function hasLocalService(answers: {
+  database: Database;
+  cache: Cache;
+}): boolean {
+  return (
+    DOCKER_SERVICE_DATABASES.has(answers.database) || answers.cache === "redis"
+  );
+}
+
+/** Maps answers to integration folders. Client is db-<database>, ORM is <orm>-<database>. */
 export function integrationsFor(answers: Answers): string[] {
   const integrations: string[] = [];
-  if (answers.database === "postgres") {
-    integrations.push("db-postgres");
-    if (answers.orm === "drizzle") {
-      integrations.push("drizzle");
+  if (answers.database !== "none") {
+    integrations.push(`db-${answers.database}`);
+    if (answers.orm !== "none") {
+      integrations.push(`${answers.orm}-${answers.database}`);
     }
   }
   if (answers.cache === "redis") {
@@ -46,12 +54,8 @@ export function validateAnswers(answers: Answers): string | null {
   if (answers.database === "none" && answers.orm !== "none") {
     return "An ORM without a database makes no sense. Pick a database or drop the ORM.";
   }
-  if (
-    answers.docker &&
-    answers.database === "none" &&
-    answers.cache === "none"
-  ) {
-    return "docker-compose needs a local service. Pick Postgres or Redis.";
+  if (answers.docker && !hasLocalService(answers)) {
+    return "docker-compose needs a local service. Pick a database that runs as a service, or Redis.";
   }
   return null;
 }

@@ -8,6 +8,7 @@ import {
   type Answers,
   type Cache,
   type Database,
+  hasLocalService,
   integrationsFor,
   type Orm,
   validateAnswers,
@@ -115,10 +116,10 @@ async function collectAnswers(options: NewOptions): Promise<Answers> {
     (options.cache as Cache | undefined) ??
     (skipPrompts ? "none" : await askCache());
 
-  const hasLocalService = database === "postgres" || cache === "redis";
+  const needsService = hasLocalService({ database, cache });
   const docker =
     options.docker ??
-    (hasLocalService && !skipPrompts ? await askDocker() : false);
+    (needsService && !skipPrompts ? await askDocker() : false);
 
   return { database, orm, cache, docker };
 }
