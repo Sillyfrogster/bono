@@ -46,6 +46,12 @@
     "bun",
     "scaffold",
     "cli",
-    "api"
+    "api",
+    "drizzle",
+    "postgres",
+    "sqlite",
+    "mysql",
+    "redis",
+    "orm"
   ]
 }

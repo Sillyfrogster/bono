@@ -10,7 +10,7 @@ Scaffold a Hono API on Bun with the boring setup already done.
 bunx bono-cli new my-api
 ```
 
-Prompts add integrations on top of the base. `--base` skips them.
+bono asks a few questions, then writes a project that runs. `--base` skips the questions and gives you the base on its own.
 
 ## The base
 
@@ -23,13 +23,22 @@ Prompts add integrations on top of the base. `--base` skips them.
 - Health endpoint, CORS, graceful shutdown
 - Biome and `bun test` configured
 
+## Integrations
+
+Add these through the prompts, or pass them as flags.
+
+- Postgres, SQLite, or MySQL for the database. Postgres and MySQL use Bun's native SQL client and SQLite uses `bun:sqlite`, so none of them add a driver dependency.
+- Drizzle for the ORM, over any of the three databases.
+- Redis for caching, using Bun's native client. It also backs rate limiting.
+- A `docker-compose.yml` for whichever local services you picked.
+
 ## Flags
 
 | Flag | |
 | --- | --- |
 | `--base` | Skip prompts, base only |
-| `--database <postgres\|none>` | |
-| `--orm <drizzle\|none>` | |
+| `--database <postgres\|sqlite\|mysql\|none>` | `none` to wire your own |
+| `--orm <drizzle\|none>` | Drizzle, needs a database |
 | `--cache <redis\|none>` | Redis, also backs rate limiting |
 | `--docker` / `--no-docker` | docker-compose for local services |
 | `--no-git` | Skip `git init` |
@@ -37,7 +46,7 @@ Prompts add integrations on top of the base. `--base` skips them.
 
 ## Requirements
 
-Bun 1.2+
+Bun 1.2 or newer. MySQL needs Bun 1.3.
 
 ## License
 
