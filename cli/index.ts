@@ -8,14 +8,14 @@ Usage:
   bono new <name> [options]
 
 Options:
-  --base                       Skip all prompts, generate the base
-  --database <postgres|none>   Answer the database prompt
-  --orm <drizzle|none>         Answer the ORM prompt
-  --cache <redis|none>         Answer the cache prompt
-  --docker / --no-docker       Answer the docker-compose prompt
-  --no-git                     Skip git init
-  --no-install                 Skip bun install
-  --help, -h                   Show this help
+  --base                                    Skip all prompts, generate the base
+  --database <postgres|sqlite|mysql|none>   Answer the database prompt
+  --orm <drizzle|none>                      Answer the ORM prompt
+  --cache <redis|none>                      Answer the cache prompt
+  --docker / --no-docker                    Answer the docker-compose prompt
+  --no-git                                  Skip git init
+  --no-install                              Skip bun install
+  --help, -h                                Show this help
 `;
 
 const { values, positionals } = parseCliArgs();
